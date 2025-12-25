@@ -11,6 +11,12 @@ Flash the firmware by connecting keyboard to your PC while holding ESC, then dro
 
 See the [build environment setup](https://docs.qmk.fm/#/getting_started_build_tools) and the [make instructions](https://docs.qmk.fm/#/getting_started_make_guide) for more information. Brand new to QMK? Start with our [Complete Newbs Guide](https://docs.qmk.fm/#/newbs).
 
+## ATTENTION:
+- Lightning control in VIA doesn't work
+- You can't control the little light thingy left to esc button
+
+If that's important for you, don't flash the firmware.
+
 ## Bootloader
 
 Enter the bootloader in 2 ways:
