@@ -5,7 +5,7 @@ A customizable 85key keyboard.
 
 Compile firmware (after setting up your build environment):
 
-    qmk compile -kb qk61 -mb default
+    qmk compile -kb qk61 -km default
 
 Flash the firmware by connecting keyboard to your PC while holding ESC, then drop the firmware to the appeared drive
 
