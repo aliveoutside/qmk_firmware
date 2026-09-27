@@ -184,6 +184,13 @@ void es_chibios_user_idle_loop_hook(void) {
     // Check for mode switch changes
     Check_Mode_Switch_Changed();
 
+    // Bt won't work with NKRO
+    bool want_nkro = Keyboard_Info.Nkro && (Keyboard_Info.Key_Mode != QMK_BLE_MODE);
+    if (keymap_config.nkro != want_nkro) {
+        clear_keyboard();
+        keymap_config.nkro = want_nkro;
+    }
+
 	if(Keyboard_Info.Key_Mode == QMK_USB_MODE) {
         if (Usb_Dis_Connect) {
             Usb_Dis_Connect = false;
@@ -471,27 +478,22 @@ void Check_Mode_Switch_Changed(void) {
 
     if (current_position != Current_Mode_Switch_Position) {
         if (!Mode_Switch_Changed) {
-            // Start debounce timer
+            // Start debounce and record the candidate position
             Mode_Switch_Changed = true;
             Mode_Switch_Debounce_Timer = timer_read();
-            Last_Mode_Switch_Position = Current_Mode_Switch_Position;
+            Last_Mode_Switch_Position = current_position;
+        } else if (current_position != Last_Mode_Switch_Position) {
+            // Position moved again during debounce, restart the timer
+            Last_Mode_Switch_Position = current_position;
+            Mode_Switch_Debounce_Timer = timer_read();
+        } else if (timer_elapsed(Mode_Switch_Debounce_Timer) >= MODE_SWITCH_DEBOUNCE_TIME) {
+            // Stable for the full debounce window, commit the change
             Current_Mode_Switch_Position = current_position;
-        } else {
-            // Check if debounce time has passed
-            if (timer_elapsed(Mode_Switch_Debounce_Timer) >= MODE_SWITCH_DEBOUNCE_TIME) {
-                // Confirm the change is stable
-                if (current_position == Current_Mode_Switch_Position) {
-                    Handle_Mode_Switch_Change(Current_Mode_Switch_Position);
-                    Mode_Switch_Changed = false;
-                } else {
-                    // Reading changed again, restart debounce
-                    Current_Mode_Switch_Position = current_position;
-                    Mode_Switch_Debounce_Timer = timer_read();
-                }
-            }
+            Handle_Mode_Switch_Change(Current_Mode_Switch_Position);
+            Mode_Switch_Changed = false;
         }
     } else {
-        // Position is stable, reset debounce
+        // Returned to the active position before debounce completed
         Mode_Switch_Changed = false;
     }
 }

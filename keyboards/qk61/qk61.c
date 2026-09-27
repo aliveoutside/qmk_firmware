@@ -134,7 +134,8 @@ void board_init(void) {
 }
 
 void keyboard_post_init_kb(void) {
-    if (keymap_config.nkro != Keyboard_Info.Nkro) {
+    // NKRO is unreliable over Bluetooth, only honour the saved setting on USB and 2.4G
+    if (Keyboard_Info.Key_Mode != QMK_BLE_MODE && keymap_config.nkro != Keyboard_Info.Nkro) {
         keymap_config.nkro = Keyboard_Info.Nkro;
     }
 
