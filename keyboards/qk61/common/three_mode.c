@@ -58,10 +58,12 @@ void Ble_Name_Synchronization(void) {
 
 uint8_t es_keyboard_leds(void) {
     switch (Keyboard_Info.Key_Mode) {
-        case QMK_2P4G_MODE: break;
-        case QMK_BLE_MODE:  break;
-        case QMK_USB_MODE:  break;
-        default:            break;
+        case QMK_2P4G_MODE:
+        case QMK_BLE_MODE:
+            return Keyboard_Status.System_Led_Status;
+        case QMK_USB_MODE:
+        default:
+            break;
     }
 
     if(es_qmk_driver) {

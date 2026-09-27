@@ -42,9 +42,6 @@ uint8_t Led_Batt_Index_Tab[10] = {
     1, 2, 3, 4, 5, 6, 7, 8, 9, 10
 };
 
-// Local Caps Lock state tracking for wireless modes
-static bool local_caps_lock_state = false;
-
 void matrix_io_delay(void) {
 }
 
@@ -298,21 +295,10 @@ void User_Point_Show(void){
     } else {
         Systick_Led_Count = 0;
 
-        // Caps Lock indicator - use local state for all modes to ensure consistency
-        if (Keyboard_Info.Key_Mode == QMK_USB_MODE) {
-            // For USB mode, use the standard QMK LED state
-            if (host_keyboard_led_state().caps_lock && Usb_If_Ok_Led) {
-                rgb_matrix_set_color(LED_CAP_INDEX, U_PWM, U_PWM, U_PWM);
-            } else {
-                rgb_matrix_set_color(LED_CAP_INDEX, 0, 0, 0);  // Turn off the LED
-            }
+        if (host_keyboard_led_state().caps_lock) {
+            rgb_matrix_set_color(LED_CAP_INDEX, U_PWM, U_PWM, U_PWM);
         } else {
-            // For wireless modes, use our local tracking which should be more reliable
-            if (local_caps_lock_state) {
-                rgb_matrix_set_color(LED_CAP_INDEX, U_PWM, U_PWM, U_PWM);
-            } else {
-                rgb_matrix_set_color(LED_CAP_INDEX, 0, 0, 0);  // Turn off the LED
-            }
+            rgb_matrix_set_color(LED_CAP_INDEX, 0, 0, 0);
         }
 
         if (Keyboard_Info.Win_Lock) {
