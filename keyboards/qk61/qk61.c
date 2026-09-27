@@ -17,11 +17,8 @@
 
 #include "common/rdmctmzt_common.h"
 
-bool Key_Fn_Status = false;
 bool User_Key_Batt_Num_Show = false;
 uint8_t User_Key_Batt_Count = 0;
-uint8_t Led_Point_Count = 0U;
-uint8_t Mac_Win_Point_Count = 0U;
 bool Test_Led = false;
 uint8_t Test_Colour = 0U;
 
@@ -98,6 +95,7 @@ void notify_usb_device_state_change_user(struct usb_device_state usb_device_stat
 }
 
 void housekeeping_task_user(void) {
+    User_Keyboard_Reset();
     es_chibios_user_idle_loop_hook();
 }
 
@@ -221,12 +219,16 @@ void Led_Point_Flash_Show(void) {
         } else if (Mac_Win_Point_Count) {
             // Mac/Win mode switching - only blink caps lock LED
             rgb_matrix_set_color(LED_CAP_INDEX, U_PWM, U_PWM, 0X00);
+        } else if (Debounce_Function_Count) {
+            rgb_matrix_set_color(LED_CAP_INDEX, 0X00, U_PWM, 0X00);
+        } else {
+            rgb_matrix_set_color(LED_CAP_INDEX, U_PWM, 0X00, 0X00);
         }
     } else {
         if (Led_Point_Count) {
             // Turn off all LEDs for regular point counting
             rgb_matrix_driver_set_color_all(0X00, 0X00, 0X00);
-        } else if (Mac_Win_Point_Count) {
+        } else if (Mac_Win_Point_Count || Debounce_Function_Count || Debounce_Point_Count) {
             // Turn off only caps lock LED for Mac/Win mode switching
             rgb_matrix_set_color(LED_CAP_INDEX, 0X00, 0X00, 0X00);
         }
@@ -239,6 +241,8 @@ void Led_Point_Flash_Show(void) {
             Led_Point_Count--;
         } else if (Mac_Win_Point_Count) {
             Mac_Win_Point_Count--;
+        } else {
+            Debounce_Point_Count--;
         }
     }
 }
@@ -290,7 +294,7 @@ void Led_Batt_Number_Show(void) {
 }
 
 void User_Point_Show(void){
-    if (Led_Point_Count || Mac_Win_Point_Count) {
+    if (Led_Point_Count || Mac_Win_Point_Count || Debounce_Point_Count) {
         Led_Point_Flash_Show();
     } else {
         Systick_Led_Count = 0;
@@ -330,6 +334,10 @@ bool rgb_matrix_indicators_advanced_user(uint8_t led_min, uint8_t led_max) {
         Led_Batt_Number_Show();
     } else {
         User_Point_Show();
+
+#if LOGO_LED_ENABLE
+        Logo_Mode_Show();
+#endif
 
         if (Key_Fn_Status) {
             switch (Keyboard_Info.Key_Mode) {
@@ -585,14 +593,192 @@ bool process_record_kb(uint16_t keycode, keyrecord_t *record) {
                 }
             }
         } return true;
+        case U_EE_CLR: {
+            if (record->event.pressed) {
+                User_QMK_EE_CLR_Flag = true;
+            } else {
+                User_QMK_EE_CLR_Flag = false;
+                Time_3s_EE_CLR_Count = 0;
+            }
+        } return true;
+        case QMK_DEBOUNCE: {
+            Debounce_Function_Status = record->event.pressed;
+            User_Key_3s_Count = 0;
+        } return true;
+        case RGB_RTOG: {
+            if (!record->event.pressed) {
+                if (Keyboard_Info.Led_On_Off) {
+                    Keyboard_Info.Led_On_Off = 0;
+                    Keyboard_Info.Logo_On_Off = 0;
+                    if (rgb_matrix_get_val() == 0) {
+                        rgb_matrix_sethsv_noeeprom(rgb_matrix_get_hue(), rgb_matrix_get_sat(), 200);
+                    }
+                } else {
+                    Keyboard_Info.Led_On_Off = 1;
+                    Keyboard_Info.Logo_On_Off = 1;
+                }
+                Save_Flash_Set();
+            }
+        } return true;
         case EE_CLR: {
             if (record->event.pressed) {
-                Key_Reset_Status = true;
-                record->event.pressed = false;
-            } else {
-                Key_Reset_Status = false;
+                Keyboard_Info.Nkro = INIT_ALL_KEY;
+                Keyboard_Info.Mac_Win_Mode = INIT_WIN_MODE;
+                Keyboard_Info.Win_Lock = INIT_WIN_NLOCK;
+                Keyboard_Info.Led_On_Off = INIT_LED_ON_OFF;
+                Keyboard_Info.Logo_On_Off = INIT_LOGO_ON_OFF;
+                Keyboard_Info.Logo_Mode = INIT_LOGO_MODE;
+                Keyboard_Info.Logo_Colour = INIT_LOGO_COLOUR;
+                Keyboard_Info.Logo_Saturation = INIT_LOGO_SATURATION;
+                Keyboard_Info.Logo_Brightness = INIT_LOGO_BRIGHTNESS;
+                Keyboard_Info.Logo_Speed = INIT_LOGO_SPEED;
+                Logo_Init();
+                Reset_Save_Flash = true;
+                eeprom_write_block_user((void *)&Keyboard_Info.Key_Mode, 0, sizeof(Keyboard_Info_t));
+                Reset_Save_Flash = false;
             }
-            Func_Time_3s_Count = 0;
+        } return true;
+        case LOGO_TOG: {
+            if (!record->event.pressed) {
+                if (Keyboard_Info.Logo_On_Off) {
+                    Keyboard_Info.Logo_On_Off = 0;
+                    if (Keyboard_Info.Logo_Brightness == 0) {
+                        Keyboard_Info.Logo_Brightness = LOGO_MAX_BRIGHTNESS;
+                    }
+                } else {
+                    Keyboard_Info.Logo_On_Off = LOGO_LED_OFF;
+                }
+                Logo_Init();
+                Save_Flash_Set();
+            }
+        } return true;
+        case LOGO_MOD: {
+            if (!record->event.pressed) {
+                if (Keyboard_Info.Logo_Mode <= (LOGO_OFF_MODE - 1)) {
+                    Keyboard_Info.Logo_Mode++;
+                    if (Keyboard_Info.Logo_Mode == LOGO_OFF_MODE) {
+                        Keyboard_Info.Logo_On_Off = LOGO_LED_OFF;
+                    }
+                } else {
+                    Keyboard_Info.Logo_On_Off = LOGO_LED_ON;
+                    Keyboard_Info.Logo_Mode = LOGO_WAVE_RGB_MODE;
+                }
+                Logo_Init();
+                Save_Flash_Set();
+            }
+        } return true;
+        case LOGO_RMOD: {
+            if (!record->event.pressed) {
+                if (Keyboard_Info.Logo_On_Off == LOGO_LED_ON) {
+                    if (Keyboard_Info.Logo_Mode <= LOGO_WAVE_RGB_MODE) {
+                        Keyboard_Info.Logo_Mode = LOGO_OFF_MODE;
+                    } else {
+                        Keyboard_Info.Logo_Mode--;
+                    }
+                    Logo_Init();
+                    Save_Flash_Set();
+                }
+            }
+        } return true;
+        case LOGO_HUI: {
+            if (!record->event.pressed) {
+                if ((Keyboard_Info.Logo_On_Off == LOGO_LED_ON) && (Keyboard_Info.Logo_Mode != LOGO_OFF_MODE) && ((Keyboard_Info.Logo_Mode & ~2) != LOGO_WAVE_RGB_MODE)) {
+                    if (Keyboard_Info.Logo_Colour + COLOUR_LEVEL >= LOGO_MAX_COLOUR) {
+                        Keyboard_Info.Logo_Colour += (COLOUR_LEVEL + 1);
+                    } else {
+                        Keyboard_Info.Logo_Colour += COLOUR_LEVEL;
+                    }
+                    Save_Flash_Set();
+                }
+            }
+        } return true;
+        case LOGO_HUD: {
+            if (!record->event.pressed) {
+                if ((Keyboard_Info.Logo_On_Off == LOGO_LED_ON) && (Keyboard_Info.Logo_Mode != LOGO_OFF_MODE) && ((Keyboard_Info.Logo_Mode & ~2) != LOGO_WAVE_RGB_MODE)) {
+                    if (Keyboard_Info.Logo_Colour <= COLOUR_LEVEL) {
+                        Keyboard_Info.Logo_Colour -= (COLOUR_LEVEL + 1);
+                    } else {
+                        Keyboard_Info.Logo_Colour -= COLOUR_LEVEL;
+                    }
+                    Save_Flash_Set();
+                }
+            }
+        } return true;
+        case LOGO_SAI: {
+            if (!record->event.pressed) {
+                if ((Keyboard_Info.Logo_On_Off == LOGO_LED_ON) && (Keyboard_Info.Logo_Mode != LOGO_OFF_MODE)) {
+                    if (Keyboard_Info.Logo_Saturation > SATURATION_LEVEL) {
+                        Keyboard_Info.Logo_Saturation -= SATURATION_LEVEL;
+                    } else {
+                        Keyboard_Info.Logo_Saturation = LOGO_MAX_SATURATION;
+                    }
+                    Save_Flash_Set();
+                }
+            }
+        } return true;
+        case LOGO_SAD: {
+            if (!record->event.pressed) {
+                if ((Keyboard_Info.Logo_On_Off == LOGO_LED_ON) && (Keyboard_Info.Logo_Mode != LOGO_OFF_MODE)) {
+                    if (Keyboard_Info.Logo_Saturation + SATURATION_LEVEL >= LOGO_MIN_SATURATION) {
+                        Keyboard_Info.Logo_Saturation = LOGO_MIN_SATURATION;
+                    } else {
+                        Keyboard_Info.Logo_Saturation += SATURATION_LEVEL;
+                    }
+                    Save_Flash_Set();
+                }
+            }
+        } return true;
+        case LOGO_VAI: {
+            if (!record->event.pressed) {
+                if ((Keyboard_Info.Logo_On_Off == LOGO_LED_ON) && (Keyboard_Info.Logo_Mode != LOGO_OFF_MODE)) {
+                    if (Keyboard_Info.Logo_Brightness + BRIGHTNESS_LEVEL < LOGO_MAX_BRIGHTNESS) {
+                        Keyboard_Info.Logo_Brightness += BRIGHTNESS_LEVEL;
+                    } else {
+                        Keyboard_Info.Logo_Brightness = LOGO_MAX_BRIGHTNESS;
+                        Led_Point_Count = 3;
+                    }
+                    Save_Flash_Set();
+                }
+            }
+        } return true;
+        case LOGO_VAD: {
+            if (!record->event.pressed) {
+                if ((Keyboard_Info.Logo_On_Off == LOGO_LED_ON) && (Keyboard_Info.Logo_Mode != LOGO_OFF_MODE)) {
+                    if (Keyboard_Info.Logo_Brightness <= BRIGHTNESS_LEVEL) {
+                        Keyboard_Info.Logo_Brightness = LOGO_MIN_BRIGHTNESS;
+                        Led_Point_Count = 3;
+                    } else {
+                        Keyboard_Info.Logo_Brightness -= BRIGHTNESS_LEVEL;
+                    }
+                    Save_Flash_Set();
+                }
+            }
+        } return true;
+        case LOGO_SPI: {
+            if (!record->event.pressed) {
+                if ((Keyboard_Info.Logo_On_Off == LOGO_LED_ON) && (Keyboard_Info.Logo_Mode != LOGO_OFF_MODE)) {
+                    if (Keyboard_Info.Logo_Speed + SPEED_LEVEL < LOGO_MAX_SPEED) {
+                        Keyboard_Info.Logo_Speed += SPEED_LEVEL;
+                    } else {
+                        Keyboard_Info.Logo_Speed = LOGO_MAX_SPEED;
+                        Led_Point_Count = 3;
+                    }
+                    Save_Flash_Set();
+                }
+            }
+        } return true;
+        case LOGO_SPD: {
+            if (!record->event.pressed) {
+                if ((Keyboard_Info.Logo_On_Off == LOGO_LED_ON) && (Keyboard_Info.Logo_Mode != LOGO_OFF_MODE)) {
+                    if (Keyboard_Info.Logo_Speed <= SPEED_LEVEL) {
+                        Keyboard_Info.Logo_Speed = LOGO_MIN_SPEED;
+                        Led_Point_Count = 3;
+                    } else {
+                        Keyboard_Info.Logo_Speed -= SPEED_LEVEL;
+                    }
+                    Save_Flash_Set();
+                }
+            }
         } return true;
         case QMK_DEBUG_SWITCH: {
             if (record->event.pressed) {

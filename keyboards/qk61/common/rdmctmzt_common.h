@@ -51,6 +51,9 @@
 
 #define PAL_ES32_PUPDR_PULLDOWN   PAL_ES32_PUD_PULLDOWN
 
+#define LOGO_LED_ENABLE         (1)
+#define SIDE_LED_ENABLE         (0)
+
 #define USER_KEY_BYTE_LENGTH	0X08
 #define USER_KEY_BIT_LENGTH		0X0F
 #define USER_MOUSE_LENGTH		0X08
@@ -73,11 +76,27 @@ enum Custom_Keycodes {
     QMK_BATT_NUM,
     QMK_WIN_LOCK,
     QMK_KB_SIX_N_CH,
-    QMK_TEST_COLOUR,
+    RGB_RTOG,
+    U_EE_CLR,
+    QMK_DEBOUNCE,
+#if LOGO_LED_ENABLE
+    LOGO_TOG,
+    LOGO_MOD,
+    LOGO_RMOD,
+    LOGO_HUI,
+    LOGO_HUD,
+    LOGO_SAI,
+    LOGO_SAD,
+    LOGO_VAI,
+    LOGO_VAD,
+    LOGO_SPI,
+    LOGO_SPD,
+#endif
     QMK_KB_2P4G_PAIR,
     QMK_KB_BLE1_PAIR,
     QMK_KB_BLE2_PAIR,
     QMK_KB_BLE3_PAIR,
+    QMK_TEST_COLOUR,
     QMK_DEBUG_SWITCH,    // Debug mode switch position
     QMK_MAC_WIN_CH       // Windows/Mac mode switch
 };
@@ -107,6 +126,16 @@ typedef struct {
 	uint8_t Nkro;
 	uint8_t Mac_Win_Mode;
 	uint8_t Win_Lock;
+	uint8_t Led_On_Off;
+	uint8_t Debounce_Delay;
+#if LOGO_LED_ENABLE
+	uint8_t Logo_On_Off;
+	uint8_t Logo_Mode;
+	uint8_t Logo_Colour;
+	uint8_t Logo_Saturation;
+	uint8_t Logo_Brightness;
+	uint8_t Logo_Speed;
+#endif
 } Keyboard_Info_t;
 
 typedef struct {
@@ -145,6 +174,52 @@ typedef enum {
 #define INIT_WIN_LOCK               (1)
 #define INIT_WIN_LOCK_NLOCK         (INIT_WIN_NLOCK)
 
+#define INIT_LED_ON                 (0)
+#define INIT_LED_OFF                (1)
+#define INIT_LED_ON_OFF             (INIT_LED_ON)
+
+#define DEBOUNCE_DELAY_ONE          (2)
+#define DEBOUNCE_DELAY_TWO          (5)
+#define DEBOUNCE_DELAY_CLASS        (DEBOUNCE_DELAY_TWO)
+#define INIT_DEBOUNCE_DELAY         (DEBOUNCE_DELAY_CLASS)
+
+#if LOGO_LED_ENABLE
+#define LOGO_LED_SIZE               (3)
+
+#define LOGO_LED_ON                 (0)
+#define LOGO_LED_OFF                (1)
+
+#define LOGO_WAVE_RGB_MODE          (1)
+#define LOGO_WAVE_DS_MODE           (2)
+#define LOGO_SPECTRUM_MODE          (3)
+#define LOGO_BREATH_MODE            (4)
+#define LOGO_LIGHT_MODE             (5)
+#define LOGO_OFF_MODE               (6)
+
+#define LOGO_MAX_COLOUR             (255)
+#define LOGO_MIN_COLOUR             (0)
+#define COLOUR_LEVEL                (15)
+
+#define LOGO_MAX_SATURATION         (0)
+#define LOGO_MIN_SATURATION         (255)
+#define SATURATION_LEVEL            (15)
+
+#define LOGO_MAX_BRIGHTNESS         (RGB_MATRIX_MAXIMUM_BRIGHTNESS)
+#define LOGO_MIN_BRIGHTNESS         (0)
+#define BRIGHTNESS_LEVEL            (15)
+
+#define LOGO_MAX_SPEED              (4)
+#define LOGO_MIN_SPEED              (0)
+#define SPEED_LEVEL                 (1)
+
+#define INIT_LOGO_ON_OFF            (LOGO_LED_ON)
+#define INIT_LOGO_MODE              (LOGO_WAVE_RGB_MODE)
+#define INIT_LOGO_COLOUR            (LOGO_MIN_COLOUR)
+#define INIT_LOGO_SATURATION        (LOGO_MAX_SATURATION)
+#define INIT_LOGO_BRIGHTNESS        (LOGO_MAX_BRIGHTNESS)
+#define INIT_LOGO_SPEED             (2)
+#endif
+
 #define U_PWM                       (RGB_MATRIX_MAXIMUM_BRIGHTNESS)
 
 #define USER_BATT_DELAY_TIME        (100 * 25)  //25S
@@ -167,6 +242,8 @@ typedef enum {
 #define KC_K133	KC_INTERNATIONAL_2
 #define KC_K151	KC_LANGUAGE_1
 #define KC_K150	KC_LANGUAGE_2
+
+#define KEY_DEB	QMK_DEBOUNCE
 
 #define MD_24G	QMK_KB_MODE_2P4G
 #define MD_BLE1	QMK_KB_MODE_BLE1
@@ -218,7 +295,25 @@ extern uint8_t Batt_Led_Count;
 extern uint16_t Time_3s_Count;
 extern uint16_t Func_Time_3s_Count;
 
+#if LOGO_LED_ENABLE
+#include "user_logo_custom.h"
+#endif
+
+extern unsigned int Debounce_Delay;
+extern uint8_t Debounce_Point_Count;
+extern uint16_t User_Key_3s_Count;
+extern bool Debounce_Function_Count;
+extern bool Debounce_Function_Status;
+extern bool User_QMK_EE_CLR_Flag;
+extern bool User_EE_CLR_Start_Flag;
+extern uint16_t Time_3s_EE_CLR_Count;
+
 extern void Init_Keyboard_Infomation(void);
+extern void User_Keyboard_Reset(void);
+
+extern bool Key_Fn_Status;
+extern uint8_t Led_Point_Count;
+extern uint8_t Mac_Win_Point_Count;
 extern void es_change_qmk_nkro_mode_enable(void);
 void es_change_qmk_nkro_mode_disable(void);
 

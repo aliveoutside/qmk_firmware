@@ -24,6 +24,16 @@ Keyboard_Info_t Keyboard_Info = {
     .Nkro = INIT_ALL_SIX_KEY,
     .Mac_Win_Mode = INIT_WIN_MAC_MODE,
     .Win_Lock = INIT_WIN_LOCK_NLOCK,
+    .Led_On_Off = INIT_LED_ON_OFF,
+    .Debounce_Delay = INIT_DEBOUNCE_DELAY,
+#if LOGO_LED_ENABLE
+    .Logo_On_Off = INIT_LOGO_ON_OFF,
+    .Logo_Mode = INIT_LOGO_MODE,
+    .Logo_Colour = INIT_LOGO_COLOUR,
+    .Logo_Saturation = INIT_LOGO_SATURATION,
+    .Logo_Brightness = INIT_LOGO_BRIGHTNESS,
+    .Logo_Speed = INIT_LOGO_SPEED,
+#endif
 };
 
 Keyboard_Status_t Keyboard_Status = {
@@ -69,6 +79,19 @@ uint8_t Systick_Led_Count = 0x00;
 uint8_t Batt_Led_Count = 0x00;
 uint16_t Time_3s_Count = 0;
 uint16_t Func_Time_3s_Count = 0;
+
+unsigned int Debounce_Delay = DEBOUNCE_DELAY_CLASS;
+uint8_t Debounce_Point_Count = 0;
+uint16_t User_Key_3s_Count = 0;
+bool Key_Fn_Status = false;
+uint8_t Led_Point_Count = 0U;
+uint8_t Mac_Win_Point_Count = 0U;
+
+bool Debounce_Function_Count = false;
+bool Debounce_Function_Status = false;
+bool User_QMK_EE_CLR_Flag = false;
+bool User_EE_CLR_Start_Flag = false;
+uint16_t Time_3s_EE_CLR_Count = 0;
 
 // Mode switch detection variables
 uint8_t Current_Mode_Switch_Position = MODE_SWITCH_USB;
@@ -306,6 +329,16 @@ OSAL_IRQ_HANDLER(Vector78) {
             Systick_Led_Count = 0;
         }
 
+        Logo_Flash_Count++;
+        if (Logo_Flash_Count >= 255) {
+            Logo_Flash_Count = 0;
+        }
+
+        Logo_Led_Count++;
+        if (Logo_Led_Count >= 255) {
+            Logo_Led_Count = 0;
+        }
+
         Batt_Led_Count++;
         if (Batt_Led_Count >= 255) {
             Batt_Led_Count = 0;
@@ -414,6 +447,34 @@ OSAL_IRQ_HANDLER(Vector78) {
                 Keyboard_Reset = true;
             }
         }
+
+        if (User_QMK_EE_CLR_Flag) {
+            uint16_t count = Time_3s_EE_CLR_Count + 1;
+            if (count >= USER_TIME_3S_TIME) {
+                Time_3s_EE_CLR_Count = 0;
+                User_QMK_EE_CLR_Flag = false;
+                User_EE_CLR_Start_Flag = true;
+            } else {
+                Time_3s_EE_CLR_Count = count;
+            }
+        }
+
+        if (Debounce_Function_Status) {
+            uint16_t count = User_Key_3s_Count + 1;
+            if (count >= USER_TIME_3S_TIME) {
+                User_Key_3s_Count = 0;
+                Debounce_Function_Status = false;
+
+                Debounce_Function_Count = !Debounce_Function_Count;
+                Debounce_Delay = Debounce_Function_Count ? DEBOUNCE_DELAY_TWO : DEBOUNCE_DELAY_ONE;
+                Keyboard_Info.Debounce_Delay = Debounce_Delay;
+
+                Debounce_Point_Count = 3;
+                Save_Flash_Set();
+            } else {
+                User_Key_3s_Count = count;
+            }
+        }
     }
 
     Systick_Interval_Count++;
@@ -433,20 +494,40 @@ OSAL_IRQ_HANDLER(Vector78) {
 void Init_Keyboard_Infomation(void) {
     eeprom_read_block_user((void *)&Keyboard_Info.Key_Mode, 0, sizeof(Keyboard_Info_t));
 
-	if ((Keyboard_Info.Key_Mode == 0XFF) && (Keyboard_Info.Ble_Channel == 0XFF) && (Keyboard_Info.Batt_Number == 0XFF)  && (Keyboard_Info.Nkro == 0XFF) && (Keyboard_Info.Mac_Win_Mode == 0XFF) && (Keyboard_Info.Win_Lock == 0XFF)) {
+	if ((Keyboard_Info.Key_Mode == 0XFF) && (Keyboard_Info.Ble_Channel == 0XFF) && (Keyboard_Info.Batt_Number == 0XFF)  && (Keyboard_Info.Nkro == 0XFF) && (Keyboard_Info.Mac_Win_Mode == 0XFF) && (Keyboard_Info.Win_Lock == 0XFF) && (Keyboard_Info.Led_On_Off == 0XFF) && (Keyboard_Info.Debounce_Delay == 0XFF)) {
         Keyboard_Info.Key_Mode = INIT_WORK_MODE;
         Keyboard_Info.Ble_Channel = INIT_BLE_CHANNEL;
         Keyboard_Info.Batt_Number = INIT_BATT_NUMBER;
         Keyboard_Info.Nkro = INIT_ALL_KEY;
         Keyboard_Info.Mac_Win_Mode = INIT_WIN_MODE;
         Keyboard_Info.Win_Lock = INIT_WIN_NLOCK;
-    } else if ((Keyboard_Info.Key_Mode == 0) && (Keyboard_Info.Ble_Channel == 0) && (Keyboard_Info.Batt_Number == 0)  && (Keyboard_Info.Nkro == 0) && (Keyboard_Info.Mac_Win_Mode == 0) && (Keyboard_Info.Win_Lock == 0)) {
+        Keyboard_Info.Led_On_Off = INIT_LED_ON_OFF;
+        Keyboard_Info.Debounce_Delay = INIT_DEBOUNCE_DELAY;
+#if LOGO_LED_ENABLE
+        Keyboard_Info.Logo_On_Off = INIT_LOGO_ON_OFF;
+        Keyboard_Info.Logo_Mode = INIT_LOGO_MODE;
+        Keyboard_Info.Logo_Colour = INIT_LOGO_COLOUR;
+        Keyboard_Info.Logo_Saturation = INIT_LOGO_SATURATION;
+        Keyboard_Info.Logo_Brightness = INIT_LOGO_BRIGHTNESS;
+        Keyboard_Info.Logo_Speed = INIT_LOGO_SPEED;
+#endif
+    } else if ((Keyboard_Info.Key_Mode == 0) && (Keyboard_Info.Ble_Channel == 0) && (Keyboard_Info.Batt_Number == 0)  && (Keyboard_Info.Nkro == 0) && (Keyboard_Info.Mac_Win_Mode == 0) && (Keyboard_Info.Win_Lock == 0) && (Keyboard_Info.Led_On_Off == 0) && (Keyboard_Info.Debounce_Delay == 0)) {
         Keyboard_Info.Key_Mode = INIT_WORK_MODE;
         Keyboard_Info.Ble_Channel = INIT_BLE_CHANNEL;
         Keyboard_Info.Batt_Number = INIT_BATT_NUMBER;
         Keyboard_Info.Nkro = INIT_ALL_KEY;
         Keyboard_Info.Mac_Win_Mode = INIT_WIN_MODE;
         Keyboard_Info.Win_Lock = INIT_WIN_NLOCK;
+        Keyboard_Info.Led_On_Off = INIT_LED_ON_OFF;
+        Keyboard_Info.Debounce_Delay = INIT_DEBOUNCE_DELAY;
+#if LOGO_LED_ENABLE
+        Keyboard_Info.Logo_On_Off = INIT_LOGO_ON_OFF;
+        Keyboard_Info.Logo_Mode = INIT_LOGO_MODE;
+        Keyboard_Info.Logo_Colour = INIT_LOGO_COLOUR;
+        Keyboard_Info.Logo_Saturation = INIT_LOGO_SATURATION;
+        Keyboard_Info.Logo_Brightness = INIT_LOGO_BRIGHTNESS;
+        Keyboard_Info.Logo_Speed = INIT_LOGO_SPEED;
+#endif
     } else {
         if (Keyboard_Info.Key_Mode > QMK_USB_MODE) {
             Keyboard_Info.Key_Mode = QMK_USB_MODE;
@@ -471,7 +552,36 @@ void Init_Keyboard_Infomation(void) {
         if (Keyboard_Info.Win_Lock > INIT_WIN_LOCK) {
             Keyboard_Info.Win_Lock = INIT_WIN_NLOCK;
         }
+
+        if (Keyboard_Info.Led_On_Off > INIT_LED_OFF) {
+            Keyboard_Info.Led_On_Off = INIT_LED_ON_OFF;
+        }
+
+        if (Keyboard_Info.Debounce_Delay > DEBOUNCE_DELAY_CLASS) {
+            Keyboard_Info.Debounce_Delay = DEBOUNCE_DELAY_CLASS;
+        }
+
+#if LOGO_LED_ENABLE
+        if (Keyboard_Info.Logo_On_Off > LOGO_LED_OFF) {
+            Keyboard_Info.Logo_On_Off = INIT_LOGO_ON_OFF;
+        }
+
+        if (Keyboard_Info.Logo_Mode > LOGO_OFF_MODE) {
+            Keyboard_Info.Logo_Mode = INIT_LOGO_MODE;
+        }
+
+        if (Keyboard_Info.Logo_Brightness > LOGO_MAX_BRIGHTNESS) {
+            Keyboard_Info.Logo_Brightness = LOGO_MAX_BRIGHTNESS;
+        }
+
+        if (Keyboard_Info.Logo_Speed > LOGO_MAX_SPEED) {
+            Keyboard_Info.Logo_Speed = INIT_LOGO_SPEED;
+        }
+#endif
     }
+
+    Debounce_Delay = Keyboard_Info.Debounce_Delay;
+    Debounce_Function_Count = (Debounce_Delay != DEBOUNCE_DELAY_ONE);
 
     // Read current mode switch position and set initial mode accordingly
     Current_Mode_Switch_Position = Read_Mode_Switch_Position();
@@ -495,6 +605,35 @@ void Init_Keyboard_Infomation(void) {
     }
 }
 
+void User_Keyboard_Reset(void) {
+    if (User_EE_CLR_Start_Flag) {
+        User_EE_CLR_Start_Flag = false;
+
+        Keyboard_Info.Debounce_Delay = INIT_DEBOUNCE_DELAY;
+        Keyboard_Info.Logo_Brightness = LOGO_MAX_BRIGHTNESS;
+        Keyboard_Info.Logo_Speed = INIT_LOGO_SPEED;
+        Keyboard_Info.Led_On_Off = INIT_LED_ON_OFF;
+        Keyboard_Info.Nkro = INIT_ALL_KEY;
+        Keyboard_Info.Mac_Win_Mode = INIT_WIN_MODE;
+        Keyboard_Info.Win_Lock = INIT_WIN_NLOCK;
+        Keyboard_Info.Logo_On_Off = INIT_LOGO_ON_OFF;
+        Keyboard_Info.Logo_Mode = INIT_LOGO_MODE;
+        Keyboard_Info.Logo_Colour = INIT_LOGO_COLOUR;
+        Keyboard_Info.Logo_Saturation = INIT_LOGO_SATURATION;
+        Logo_Init();
+
+        Reset_Save_Flash = true;
+        eeprom_write_block_user((void *)&Keyboard_Info.Key_Mode, 0, sizeof(Keyboard_Info_t));
+        Reset_Save_Flash = false;
+
+        Debounce_Delay = Keyboard_Info.Debounce_Delay;
+        Debounce_Function_Count = (Debounce_Delay != DEBOUNCE_DELAY_ONE);
+
+        eeconfig_disable();
+        soft_reset_keyboard();
+    }
+}
+
 void es_change_qmk_nkro_mode_enable(void) {
     if(!keymap_config.nkro) {
         clear_keyboard(); // clear first buffer to prevent stuck keys
@@ -514,3 +653,21 @@ void es_change_qmk_nkro_mode_disable(void) {
         Save_Flash_Set();
     }
 }
+
+#if LOGO_LED_ENABLE
+// The stock QMK VIA handler only routes id_qmk_rgblight_channel when RGBLIGHT_ENABLE
+// is set; this board uses the channel for the Logo LEDs instead.
+#if defined(VIA_ENABLE)
+void via_custom_value_command_kb(uint8_t *data, uint8_t length) {
+    uint8_t *command_id = &(data[0]);
+    uint8_t *channel_id = &(data[1]);
+
+    if (*channel_id == id_qmk_rgblight_channel) {
+        User_Via_Qmk_Logo_Command(data, length);
+        return;
+    }
+
+    *command_id = id_unhandled;
+}
+#endif
+#endif
