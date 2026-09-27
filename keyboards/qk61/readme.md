@@ -7,30 +7,27 @@ A customizable 61-key 60% wireless keyboard.
 
 ## Building
 
-Compile the default firmware after setting up your build environment:
-
     qmk compile -kb qk61 -km default
 
 See the [build environment setup](https://docs.qmk.fm/#/getting_started_build_tools) and the [make instructions](https://docs.qmk.fm/#/getting_started_make_guide) for more information. Brand new to QMK? Start with the [Complete Newbs Guide](https://docs.qmk.fm/#/newbs).
 
 ## Flashing
 
-Enter the bootloader by connecting the keyboard to your PC while holding Esc, then copy the generated firmware file to the appeared drive.
+Connect the keyboard while holding Esc. A mass storage drive appears; copy the firmware file to it.
 
-## Bootloader
-
-Enter the bootloader in 2 ways:
-
-* **Bootmagic reset**: Hold down the key at (0,0) in the matrix (Esc key) and plug in the keyboard
-* **Physical reset button**: Briefly press the button on the back of the PCB
+You can also press `QK_BOOT`, if your keymap has it, or the reset button on the back of the PCB.
 
 ## VIA
 
-`VIA_ENABLE = yes` is intentionally enabled in `rules.mk`. Do not disable it: this keyboard has been observed to fail initialization without VIA/dynamic keymap support, and the common wireless code uses dynamic keymap APIs.
+Keep `VIA_ENABLE = yes` in `rules.mk`. The board fails to initialize without it.
 
-Build the `default` keymap and import `CIDOO QK61 VIA.JSON` in <https://usevia.app/> if VIA configuration is needed. In VIA settings, enable **Show Design tab**, then load the draft definition in the Design tab.
+Build any keymap, then load `CIDOO QK61 VIA.JSON` in <https://usevia.app/> (enable **Show Design tab** first). VIA needs a USB connection — it does not work over 2.4 GHz or Bluetooth.
+
+## Lighting
+
+RGB Matrix drives 64 LEDs. The last three are the bar left of Esc, exposed to VIA under **logo**; the rest are under **Backlight**. Both have keycodes: `RM_*` and `LG_*`.
 
 ## Notes
 
-* VIA lighting support is partial. RGB Matrix firmware support exists, but the VIA draft definition still contains legacy logo-lighting controls, and the small indicator/light to the left of Esc is not controllable from VIA.
+* VIA offers both `UG_*` and `RM_*` keycodes because the definition declares `qmk_lighting` while the menus use both lighting channels. Only `RM_*` does anything.
 * [Upstreaming guide](https://docs.qmk.fm/newbs_git_using_your_master_branch)
