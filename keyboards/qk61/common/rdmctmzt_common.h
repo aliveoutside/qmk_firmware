@@ -98,7 +98,10 @@ enum Custom_Keycodes {
     QMK_KB_BLE3_PAIR,
     QMK_TEST_COLOUR,
     QMK_DEBUG_SWITCH,    // Debug mode switch position
-    QMK_MAC_WIN_CH       // Windows/Mac mode switch
+    QMK_MAC_WIN_CH,      // Windows/Mac mode switch
+#if LOGO_LED_ENABLE
+    LOGO_ONLY            // keys off, logo stays lit
+#endif
 };
 
 enum Custom_KeyModes {
@@ -135,6 +138,7 @@ typedef struct {
 	uint8_t Logo_Saturation;
 	uint8_t Logo_Brightness;
 	uint8_t Logo_Speed;
+	uint8_t Logo_Only;
 #endif
 } Keyboard_Info_t;
 
@@ -218,6 +222,10 @@ typedef enum {
 #define INIT_LOGO_SATURATION        (LOGO_MAX_SATURATION)
 #define INIT_LOGO_BRIGHTNESS        (LOGO_MAX_BRIGHTNESS)
 #define INIT_LOGO_SPEED             (2)
+
+#define LOGO_ONLY_OFF               (0)
+#define LOGO_ONLY_ON                (1)
+#define INIT_LOGO_ONLY              (LOGO_ONLY_OFF)
 #endif
 
 #define U_PWM                       (RGB_MATRIX_MAXIMUM_BRIGHTNESS)

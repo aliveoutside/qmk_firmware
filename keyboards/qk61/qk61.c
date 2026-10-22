@@ -324,6 +324,13 @@ void User_Test_Colour_Show(void){
 }
 
 bool rgb_matrix_indicators_advanced_user(uint8_t led_min, uint8_t led_max) {
+#if LOGO_LED_ENABLE
+    if (Keyboard_Info.Logo_Only == LOGO_ONLY_ON) {
+        rgb_matrix_set_color_all(0, 0, 0);
+    }
+    Logo_Mode_Show();
+#endif
+
     if (User_Power_Low) {
         Led_Power_Low_Show();
     } else if (Test_Led) {
@@ -335,10 +342,6 @@ bool rgb_matrix_indicators_advanced_user(uint8_t led_min, uint8_t led_max) {
     } else {
         User_Point_Show();
 
-#if LOGO_LED_ENABLE
-        Logo_Mode_Show();
-#endif
-
         if (Key_Fn_Status) {
             switch (Keyboard_Info.Key_Mode) {
                 case QMK_BLE_MODE: {
@@ -347,7 +350,7 @@ bool rgb_matrix_indicators_advanced_user(uint8_t led_min, uint8_t led_max) {
                         case QMK_BLE_CHANNEL_2: rgb_matrix_set_color(LED_BLE_2_INDEX, U_PWM, U_PWM, U_PWM); break;
                         case QMK_BLE_CHANNEL_3: rgb_matrix_set_color(LED_BLE_3_INDEX, U_PWM, U_PWM, U_PWM); break;
                         default:                                                                            break;
-                    } 
+                    }
                 } break;
                 case QMK_2P4G_MODE:             rgb_matrix_set_color(LED_2P4G_INDEX, U_PWM, U_PWM, U_PWM);  break;
                 case QMK_USB_MODE:              rgb_matrix_set_color(LED_USB_INDEX,  U_PWM, U_PWM, U_PWM);  break;
@@ -780,6 +783,14 @@ bool process_record_kb(uint16_t keycode, keyrecord_t *record) {
                 }
             }
         } return true;
+#if LOGO_LED_ENABLE
+        case LOGO_ONLY: {
+            if (!record->event.pressed) {
+                Keyboard_Info.Logo_Only = (Keyboard_Info.Logo_Only == LOGO_ONLY_ON) ? LOGO_ONLY_OFF : LOGO_ONLY_ON;
+                Save_Flash_Set();
+            }
+        } return true;
+#endif
         case QMK_DEBUG_SWITCH: {
             if (record->event.pressed) {
                 Debug_Mode_Switch_Position();

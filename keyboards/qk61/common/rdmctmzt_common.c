@@ -33,6 +33,7 @@ Keyboard_Info_t Keyboard_Info = {
     .Logo_Saturation = INIT_LOGO_SATURATION,
     .Logo_Brightness = INIT_LOGO_BRIGHTNESS,
     .Logo_Speed = INIT_LOGO_SPEED,
+    .Logo_Only = INIT_LOGO_ONLY,
 #endif
 };
 
@@ -510,6 +511,7 @@ void Init_Keyboard_Infomation(void) {
         Keyboard_Info.Logo_Saturation = INIT_LOGO_SATURATION;
         Keyboard_Info.Logo_Brightness = INIT_LOGO_BRIGHTNESS;
         Keyboard_Info.Logo_Speed = INIT_LOGO_SPEED;
+        Keyboard_Info.Logo_Only = INIT_LOGO_ONLY;
 #endif
     } else if ((Keyboard_Info.Key_Mode == 0) && (Keyboard_Info.Ble_Channel == 0) && (Keyboard_Info.Batt_Number == 0)  && (Keyboard_Info.Nkro == 0) && (Keyboard_Info.Mac_Win_Mode == 0) && (Keyboard_Info.Win_Lock == 0) && (Keyboard_Info.Led_On_Off == 0) && (Keyboard_Info.Debounce_Delay == 0)) {
         Keyboard_Info.Key_Mode = INIT_WORK_MODE;
@@ -527,6 +529,7 @@ void Init_Keyboard_Infomation(void) {
         Keyboard_Info.Logo_Saturation = INIT_LOGO_SATURATION;
         Keyboard_Info.Logo_Brightness = INIT_LOGO_BRIGHTNESS;
         Keyboard_Info.Logo_Speed = INIT_LOGO_SPEED;
+        Keyboard_Info.Logo_Only = INIT_LOGO_ONLY;
 #endif
     } else {
         if (Keyboard_Info.Key_Mode > QMK_USB_MODE) {
@@ -577,6 +580,10 @@ void Init_Keyboard_Infomation(void) {
         if (Keyboard_Info.Logo_Speed > LOGO_MAX_SPEED) {
             Keyboard_Info.Logo_Speed = INIT_LOGO_SPEED;
         }
+
+        if (Keyboard_Info.Logo_Only > LOGO_ONLY_ON) {
+            Keyboard_Info.Logo_Only = INIT_LOGO_ONLY;
+        }
 #endif
     }
 
@@ -620,6 +627,7 @@ void User_Keyboard_Reset(void) {
         Keyboard_Info.Logo_Mode = INIT_LOGO_MODE;
         Keyboard_Info.Logo_Colour = INIT_LOGO_COLOUR;
         Keyboard_Info.Logo_Saturation = INIT_LOGO_SATURATION;
+        Keyboard_Info.Logo_Only = INIT_LOGO_ONLY;
         Logo_Init();
 
         Reset_Save_Flash = true;
